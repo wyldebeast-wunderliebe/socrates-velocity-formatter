@@ -1,0 +1,70 @@
+#macro(renderItem $ctl)
+      
+    #if ($ctl.getType() == "flowgroup")
+      #renderFlowGroup($ctl)
+    #elseif ($ctl.getType() == "select")
+      <div class="question">$ctl.getLabel()</div>
+      <div class="alert">$ctl.getAlert()</div>
+      <div class="hint">$ctl.getHint()</div>
+      #renderSelect($ctl)
+    #elseif ($ctl.getType() == "textarea")
+      <div class="question">$ctl.getLabel()</div>
+      <div class="alert">$ctl.getAlert()</div>
+      <div class="hint">$ctl.getHint()</div>
+      #renderTextArea($ctl)
+    #elseif ($ctl.getType() == "input")
+      <div class="question">$ctl.getLabel()</div>
+      <div class="alert">$ctl.getAlert()</div>
+      <div class="hint">$ctl.getHint()</div>
+      #renderInput($ctl)
+    #end
+
+#end
+
+#macro(renderInput $item)
+    <input type="text" name="$item.getId()"
+      value="$context.get($item.getId()).get('value')"
+    />
+#end
+
+#macro(renderTextArea $item)
+  <textarea name="$item.getId()" rows="3" cols="40">$context.get($item).get('value')</textarea>
+#end
+
+#macro(renderSelect $item)
+  <select name="$ctl.getId()">
+    #foreach ($opt in $ctl.getOptions())
+      <option title="$opt.getHint()" value="$opt.getValue()"
+      #if ("$item.getValue()" == "$opt.getValue()")
+        selected="selected"
+      #end
+      >$opt.getLabel()</option>
+    #end   
+  </select>
+#end
+
+#macro(header)
+  <head>
+    <title>Wageindicator Websurvey</title>
+    <meta
+      http-equiv="Content-Type"
+      content="text/html;
+      charset=UTF-8"
+    >
+  <head/>
+#end
+
+#macro(formHeader)
+  <form id="woliweb" name="woliweb" action="Websurvey"
+    method="POST"
+  >
+    <input type="hidden" name="stateId" value="$stateId"/>
+#end
+
+#macro(formFooter)
+ </form>
+#end
+
+#macro(formFooterNoPrevious)
+ </form>
+#end

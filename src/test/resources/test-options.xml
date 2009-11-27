@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<optionlist id="ol0">
+  <option value="refopt0" label="Option 0"/>
+  <option value="refopt1" label="Option 1"/>
+  <option value="refopt2" label="Option 2"/>
+</optionlist>

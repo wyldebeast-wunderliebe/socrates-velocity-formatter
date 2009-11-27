@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE web-app PUBLIC "-//Sun Microsystems, Inc.//DTD Web Application 2.2//EN" "http://java.sun.com/j2ee/dtds/web-app_2_2.dtd">
+
+<web-app id="woliweb">
+  <display-name>WoliWeb Application</display-name>
+  <description>WoliWeb Web application</description>
+
+  <servlet id="WoliWebServlet">
+    <servlet-name>WoliWebServlet</servlet-name>
+    <description>Core Servlet</description>
+    <servlet-class>com.w20e.woliweb.servlet.WoliWebServlet</servlet-class>
+
+    <init-param id="woliweb-param0">
+      <param-name>woliweb.cfg.root</param-name>
+      <param-value>./target/test-classes/</param-value>
+    </init-param>
+  </servlet>
+
+  <servlet-mapping id="WoliWebServletMapping">
+    <servlet-name>WoliWebServlet</servlet-name>
+    <url-pattern>/WoliWeb</url-pattern>
+  </servlet-mapping>
+
+</web-app>

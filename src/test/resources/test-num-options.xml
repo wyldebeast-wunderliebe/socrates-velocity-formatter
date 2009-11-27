@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<optionlist id="nol0">
+  <option value="-10" label="Option 0"/>
+  <option value="-11" label="Option 1"/>
+  <option value="-12" label="Option 2"/>
+</optionlist>

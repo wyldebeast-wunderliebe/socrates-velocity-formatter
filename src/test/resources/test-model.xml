@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<questionnaire xmlns:fo="http://www.w3.org/1999/XSL/Format"
+  description="$localResource.getString('questionnaire.description')"
+  name="ww-2004-1"
+  id="ww-2004-1">
+
+  <section id="A" name="A" label="Section A">
+
+    <item id="A01" spsslabel=""
+      label="Question A01" type="Input"
+      hint="Hint A01"
+      description="Question A01 description"
+      mask="" alert="Question A01 alert"
+      relevant="((1 &gt;= -2000) and (2 &lt;= 4)) and (1 != 0)"
+      default="xxx"
+      required="true()"
+    />
+
+  </section>
+
+</questionnaire>

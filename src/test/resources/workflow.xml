@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<workflow>
+
+  <!-- all action definitions -->
+  <actions>
+    <action id="a0" class="com.w20e.socrates.process.Action0"/>
+    <action id="a1" class="com.w20e.socrates.process.Action0"/>
+    <action id="next" class="com.w20e.socrates.process.Next"/>
+    <action id="render" class="com.w20e.socrates.process.Render"/>
+    <action id="validate" class="com.w20e.socrates.process.Validate"/>
+    <action id="submit" class="com.w20e.socrates.process.Submit"/>
+  </actions>
+
+  <!-- Global context -->
+  <context>
+    <property>
+      <name>foo</name>
+      <value>bar</value>
+    </property>
+  </context>
+
+  <initial idref="a0"/>
+
+  <!-- processing steps -->
+  <mappings>
+    <mapping from="a0" to="next" condition="ok"/>
+
+    <!-- Main loop -->
+    <mapping from="render" to="validate" condition="wait"/>
+    <mapping from="validate" to="render" condition="fail"/>
+    <mapping from="validate" to="next" condition="ok"/>
+    <mapping from="next" to="render" condition="ok"/>
+
+    <mapping from="submit" to="a1" condition="fail"/>
+
+  </mappings>
+
+  <finals>
+    <final idref="a1"/>
+  </finals>
+
+</workflow>

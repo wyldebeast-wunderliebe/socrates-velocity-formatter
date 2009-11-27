@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<woliweb>
+  <messages>
+    <no_render_info>No rendering info found</no_render_info>
+  </messages>
+  
+  <statemanager>
+    <class>com.w20e.socrates.formatting.TestStateManager</class>
+  </statemanager>
+  <runner>
+    <url>file:./target/test-classes/workflow.xml</url>
+  </runner>
+  <formatter>
+    <class></class>
+    <locale>
+      <prefix>socratesimpl</prefix>
+    </locale>
+    <velocity>
+      <velocimacro>
+        <library>Macros</library>
+      </velocimacro>
+      <resource>
+        <loader>file</loader>
+      </resource>
+      <file>
+        <resource>
+          <loader>
+             <path>./target/test-classes/</path>
+          </loader>
+        </resource>
+      </file>
+      <template>
+        <encoding>UTF-8</encoding>
+      </template>
+    </velocity>
+  </formatter>
+
+  <model>
+    <factory>com.w20e.socrates.factories.QuestionnaireFactoryImpl</factory>
+    <id>file:./target/test-classes/test-model.xml</id>
+  </model>
+
+  <submission>
+    <type>file</type>
+    <basedir>./target/test-reports/</basedir>
+  </submission>
+
+</woliweb>

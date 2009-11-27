@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>socrates</groupId>
+  <artifactId>socrates-velocity-formatter</artifactId>
+  <version>1.0.6</version>
+  <description>Velocity formatter for Socrates</description>
+
+  <parent>
+    <groupId>com.w20e.socrates</groupId>
+    <artifactId>socrates</artifactId>
+    <version>2.1</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+  
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId> 
+        <configuration>
+          <source>1.6</source>
+          <target>1.6</target>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <dependencies>
+    <dependency>
+      <groupId>commons-configuration</groupId>
+      <artifactId>commons-configuration</artifactId>
+      <version>1.6</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.velocity</groupId>
+      <artifactId>velocity</artifactId>
+      <version>1.6.2</version>
+    </dependency>
+    <dependency>
+      <groupId>socrates</groupId>
+      <artifactId>socrates</artifactId>
+      <version>3.2.2</version>
+    </dependency>
+    <dependency>
+      <groupId>socrates</groupId>
+      <artifactId>socrates-impl</artifactId>
+      <version>2.3.5</version>
+    </dependency>    
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.5</version>
+      <type>jar</type>
+      <scope>test</scope>
+    </dependency>    
+  </dependencies>
+</project>
+
