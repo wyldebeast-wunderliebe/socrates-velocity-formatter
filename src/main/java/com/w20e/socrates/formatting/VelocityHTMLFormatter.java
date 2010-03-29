@@ -277,14 +277,10 @@ public final class VelocityHTMLFormatter implements Formatter {
         LOGGER.finest("Context: " + pContext);
 
         // Add specific render options
-        if (pContext.getData().containsKey("renderOptions")) {
+        LOGGER.finest("Rendering options: "
+                + pContext.getProperty("renderOptions"));
 
-            LOGGER.finest("Rendering options: "
-                    + pContext.getData().get("renderOptions"));
-
-            context.put("renderoptions", pContext.getData()
-                    .get("renderOptions"));
-        }
+        context.put("renderoptions", pContext.getProperty("renderOptions"));
 
         // Any errors?
         if (ActionResultImpl.FAIL.equals(pContext.getResult().toString())) {

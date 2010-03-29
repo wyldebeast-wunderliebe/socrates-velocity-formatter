@@ -1,6 +1,7 @@
 1.0.6-SNAPSHOT
 ==============
 * New dependency on velocity 1.6.2, removed velocity-tools
+* Fixed erroneous setting of renderOptions
 
 1.0.5
 =====
