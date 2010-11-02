@@ -43,7 +43,7 @@ import com.w20e.socrates.process.ValidationException;
 import com.w20e.socrates.rendering.CascadedSelect;
 import com.w20e.socrates.rendering.Control;
 import com.w20e.socrates.rendering.Group;
-import com.w20e.socrates.rendering.OptionList;
+import com.w20e.socrates.rendering.Option;
 import com.w20e.socrates.rendering.Renderable;
 import com.w20e.socrates.util.FillProcessor;
 import com.w20e.socrates.util.LocaleUtility;
@@ -107,7 +107,7 @@ public final class VelocityHTMLFormatter implements Formatter {
 
                 value = this.cfg.getProperty(key);
 
-                if (value instanceof List) {
+                if (value instanceof List<?>) {
 
                     String newVal = "";
 
@@ -281,7 +281,7 @@ public final class VelocityHTMLFormatter implements Formatter {
                 + pContext.getProperty("renderOptions"));
 
         context.put("renderoptions", pContext.getProperty("renderOptions"));
-
+        
         // Any errors?
         if (ActionResultImpl.FAIL.equals(pContext.getResult().toString())) {
             context.put("errors", TRUE);
@@ -402,10 +402,11 @@ public final class VelocityHTMLFormatter implements Formatter {
         if ("cascadedselect".equals(control.getType())) {
             String ref = ((CascadedSelect) rItem).getNodeRef();
             LOGGER.finest("Using ref node " + ref);
+            
             try {
                 String refvalue = inst.getNode(ref).getValue().toString();
                 LOGGER.finest("Ref node " + ref + " has value " + refvalue);
-                OptionList options = ((CascadedSelect) rItem)
+                Collection<Option> options = ((CascadedSelect) rItem)
                         .getOptions(refvalue);
                 LOGGER.finest("Added " + options.size() + " options");
                 itemCtx.put("options", options);
