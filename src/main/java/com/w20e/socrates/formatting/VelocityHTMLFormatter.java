@@ -65,6 +65,11 @@ public final class VelocityHTMLFormatter implements Formatter {
     private boolean debug;
 
     /**
+     * Default render options.
+     */
+    private Map<String, String> renderOptions; 
+    
+    /**
      * Config.
      */
     private Configuration cfg;
@@ -90,11 +95,11 @@ public final class VelocityHTMLFormatter implements Formatter {
      *            config for formatter
      * @todo handle options
      */
-    public void init(final Configuration config,
-            final Map<String, String> options) {
+    public void init(final Configuration config) {
 
         this.cfg = config;
 
+        this.renderOptions = new HashMap<String, String>();
         final Properties props = new Properties();
         String key;
         Object value;
@@ -126,6 +131,9 @@ public final class VelocityHTMLFormatter implements Formatter {
                             + key.substring(19) + " to "
                             + this.cfg.getProperty(key).toString());
                 }
+            } else if (key.startsWith("formatter.options.")) {
+
+                this.renderOptions.put(key.substring(18), this.cfg.getString(key));
             }
         }
 
@@ -276,11 +284,22 @@ public final class VelocityHTMLFormatter implements Formatter {
 
         LOGGER.finest("Context: " + pContext);
 
-        // Add specific render options
-        LOGGER.finest("Rendering options: "
-                + pContext.getProperty("renderOptions"));
+        Map<String, String> localOptions = new HashMap<String, String>();
+        localOptions.putAll(this.renderOptions); 
+        
+        if (pContext.getProperty("renderOptions") != null) {
+        	// Add specific render options
+        	LOGGER.finest("Rendering options: "
+        			+ pContext.getProperty("renderOptions"));
 
-        context.put("renderoptions", pContext.getProperty("renderOptions"));
+        	try {
+        		localOptions.putAll((Map<String, String>) pContext.getProperty("renderOptions"));
+        	} catch (ClassCastException cce) {
+        		LOGGER.severe("Couldn't cast renderoptions to map");
+        	}
+        }
+
+    	context.put("renderOptions", localOptions);
         
         // Any errors?
         if (ActionResultImpl.FAIL.equals(pContext.getResult().toString())) {

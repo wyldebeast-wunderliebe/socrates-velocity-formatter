@@ -2,6 +2,11 @@
 <html>
   #header()
   <body>
+  
+    #foreach ($opt in $renderOptions.keySet())
+      <!-- $opt: $renderOptions.get($opt) -->
+    #end
+  
     #formHeader()
 
     #foreach ($item in $items)

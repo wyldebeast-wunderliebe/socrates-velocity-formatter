@@ -1,5 +1,11 @@
-1.0.6-SNAPSHOT
-==============
+1.0.7
+=====
+* Removed options for init of formatter
+* Added setting of render options from config file
+* New dependency on velocity 1.6.4
+
+1.0.6
+=====
 * New dependency on velocity 1.6.2, removed velocity-tools
 * Fixed erroneous setting of renderOptions
 

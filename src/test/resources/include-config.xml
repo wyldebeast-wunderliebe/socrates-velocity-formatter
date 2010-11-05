@@ -7,10 +7,18 @@
   <statemanager>
     <class>com.w20e.socrates.formatting.TestStateManager</class>
   </statemanager>
+  
   <runner>
     <url>file:./target/test-classes/workflow.xml</url>
   </runner>
+  
   <formatter>
+  
+    <options>
+      <enable_js>true</enable_js>
+      <disable_ajax_validation>true</disable_ajax_validation>
+    </options>
+  
     <class></class>
     <locale>
       <prefix>socratesimpl</prefix>

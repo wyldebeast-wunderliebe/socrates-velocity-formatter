@@ -14,6 +14,7 @@ import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 import org.apache.commons.configuration.Configuration;
 
@@ -51,12 +52,13 @@ public class TestVelocityHTMLFormatter extends TestCase {
 			Configuration cfg = ConfigurationResource.getInstance()
 					.getConfiguration();
 			this.formatter = new VelocityHTMLFormatter();
-			this.formatter.init(cfg, new HashMap<String, String>());
+			this.formatter.init(cfg);
 		} catch (Exception e) {
 			fail(e.getMessage());
 		}
 	}
 
+	
 	public void testFormat() {
 
 		InstanceImpl inst = new InstanceImpl();
@@ -88,10 +90,17 @@ public class TestVelocityHTMLFormatter extends TestCase {
 					sm, model, inst, null);
 			ctx.setLocale(new Locale("en", "GB"));
 
+			Map<String, String> opts = new HashMap<String, String>();
+			opts.put("disable_ajax_validation", "false");
+			
+			ctx.setProperty("renderOptions", opts);
 			this.formatter.format(testItems, out, ctx);
 
+			assertTrue(out.toString().indexOf("enable_js: true") > -1);
+			assertTrue(out.toString().indexOf("disable_ajax_validation: false") > -1);
+			
 		} catch (Exception e) {
-			e.printStackTrace();
+
 			fail(e.getMessage());
 		}
 
