@@ -13,6 +13,8 @@ package com.w20e.socrates.formatting;
 
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -213,6 +215,10 @@ public final class VelocityHTMLFormatter implements Formatter {
             writer.flush();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error in formatting items", e);
+            // Print full stack to logging;
+            PrintWriter writer = new PrintWriter(new StringWriter());
+            e.printStackTrace(writer);
+            LOGGER.log(Level.SEVERE, writer.toString());
             throw new FormatException(e.getMessage());
         }
     }
