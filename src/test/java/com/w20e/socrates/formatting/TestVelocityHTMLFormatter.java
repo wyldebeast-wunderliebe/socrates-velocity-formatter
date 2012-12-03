@@ -90,6 +90,14 @@ public class TestVelocityHTMLFormatter extends TestCase {
 					sm, model, inst, null);
 			ctx.setLocale(new Locale("en", "GB"));
 
+			// No local options
+			this.formatter.format(testItems, out, ctx);
+			
+			assertTrue(out.toString().indexOf("enable_js: true") > -1);
+			assertTrue(out.toString().indexOf("disable_ajax_validation: true") > -1);
+
+			out.reset();
+			
 			Map<String, String> opts = new HashMap<String, String>();
 			opts.put("disable_ajax_validation", "false");
 			
