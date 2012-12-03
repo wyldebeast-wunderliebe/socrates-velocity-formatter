@@ -42,10 +42,12 @@ import com.w20e.socrates.model.NodeValidator;
 import com.w20e.socrates.model.XRefSolver;
 import com.w20e.socrates.process.RunnerContext;
 import com.w20e.socrates.process.ValidationException;
-import com.w20e.socrates.rendering.CascadedSelect;
 import com.w20e.socrates.rendering.Control;
 import com.w20e.socrates.rendering.Group;
 import com.w20e.socrates.rendering.Option;
+import com.w20e.socrates.rendering.Select;
+import com.w20e.socrates.rendering.OptionList;
+import com.w20e.socrates.rendering.RenderOptionsImpl;
 import com.w20e.socrates.rendering.Renderable;
 import com.w20e.socrates.util.FillProcessor;
 import com.w20e.socrates.util.LocaleUtility;
@@ -61,524 +63,571 @@ import com.w20e.socrates.workflow.Failure;
  */
 public final class VelocityHTMLFormatter implements Formatter {
 
-    /**
-     * Render debugging info or not.
-     */
-    private boolean debug;
+	/**
+	 * Render debugging info or not.
+	 */
+	private boolean debug;
 
-    /**
-     * Default render options.
-     */
-    private Map<String, String> renderOptions; 
+	/**
+	 * Default render options.
+	 */
+	private Map<String, Object> renderOptions;
+
+	/**
+	 * Config.
+	 */
+	private Configuration cfg;
+
+	/**
+	 * Hold actual Velocity engine.
+	 */
+	private VelocityEngine engine;
+
+	/**
+	 * Initialize this class' logging.
+	 */
+	private static final Logger LOGGER = Logger
+			.getLogger(VelocityHTMLFormatter.class.getName());
+
+	private static final String TRUE = "true";
+	private static final String FALSE = "false";
+
+	/**
+	 * Create a new formatter for the given rendering and configuration.
+	 * 
+	 * @param config
+	 *            config for formatter
+	 * @todo handle options
+	 */
+	public void init(final Configuration config) {
+
+		this.cfg = config;
+
+		this.renderOptions = new HashMap<String,Object>();
+		final Properties props = new Properties();
+		String key;
+		Object value;
+
+		for (final Iterator<?> i = this.cfg.getKeys(); i.hasNext();) {
+
+			key = (String) i.next();
+
+			if (key.startsWith("formatter.velocity.")) {
+
+				value = this.cfg.getProperty(key);
+
+				if (value instanceof List<?>) {
+
+					String newVal = "";
+
+					for (final Iterator<?> j = ((List<?>) value).iterator(); j
+							.hasNext();) {
+						newVal = newVal + j.next() + ",";
+					}
+					props.setProperty(key.substring(19), newVal);
+					LOGGER.finest("Setting Velocity property "
+							+ key.substring(19) + " to list "
+							+ this.cfg.getProperty(key).toString());
+				} else {
+					props.setProperty(key.substring(19),
+							this.cfg.getString(key));
+					LOGGER.finest("Setting Velocity property "
+							+ key.substring(19) + " to "
+							+ this.cfg.getProperty(key).toString());
+				}
+			} else if (key.startsWith("formatter.options.")) {
+
+				setRenderingProperty(key.substring(18), this.cfg.getString(key));
+			}
+		}
+
+		if (TRUE.equals(config.getString("formatter.debug", FALSE))) {
+			this.debug = true;
+			LOGGER.log(Level.WARNING, "Using debug mode in formatting");
+		}
+
+		try {
+			this.engine = new VelocityEngine();
+			this.engine.setApplicationAttribute("engine", this.engine);
+			this.engine.setApplicationAttribute("cfg", this.cfg);
+			this.engine.init(props);
+		} catch (Exception e) {
+			LOGGER.log(Level.SEVERE, "Can't configure Velocity. This is BAD!",
+					e);
+		}
+	}
+
+    private void setRenderingProperty(final String pName, final String pValue) {
+
+    	if (pName.startsWith("enable_")) {
+        	this.renderOptions.put(pName, Boolean.valueOf(pValue));    		
+        	this.renderOptions.put(pName.substring(7), Boolean.valueOf(pValue));    		
+    	} else if (pName.startsWith("disable_")) {
+        	this.renderOptions.put(pName, Boolean.valueOf(pValue));
+        	this.renderOptions.put(pName.substring(8), Boolean.valueOf(pValue));    		
+    	} else {
+    		this.renderOptions.put(pName, pValue);
+    	}
+    }
     
-    /**
-     * Config.
-     */
-    private Configuration cfg;
+	/**
+	 * Enable reset of properties after initialization.
+	 * 
+	 * @param property
+	 * @param value
+	 */
+	public void setProperty(final String property, final String value) {
 
-    /**
-     * Hold actual Velocity engine.
-     */
-    private VelocityEngine engine;
+		this.engine.setProperty(property, value);
+	}
 
-    /**
-     * Initialize this class' logging.
-     */
-    private static final Logger LOGGER = Logger
-            .getLogger(VelocityHTMLFormatter.class.getName());
+	/**
+	 * Format list of items. This formatter uses velocity and thus needs a
+	 * template to work. The template to use is determined as follows: 1. if the
+	 * RunnerContext contains a value for the property "template", this one is
+	 * used; 2. else if the configuration given to init contains a key for
+	 * "formatter.template", this one is used; 3. the template name defaults to
+	 * "main.vm".
+	 * 
+	 * @param items
+	 *            List of items to use.
+	 * @param out
+	 *            OutputStream to use
+	 * @param pContext
+	 *            Processing context
+	 * @throws Exception
+	 *             in case of Velocity errors, or output stream errors.
+	 */
+	public void format(final Collection<Renderable> items,
+			final OutputStream out, final RunnerContext pContext)
+			throws FormatException {
 
-    private static final String TRUE = "true";
-    private static final String FALSE = "false";
+		VelocityContext context = new VelocityContext();
+		try {
+			Writer writer;
+			writer = new OutputStreamWriter(out, this.cfg.getString(
+					"formatter.encoding", "UTF-8"));
 
-    /**
-     * Create a new formatter for the given rendering and configuration.
-     * 
-     * @param config
-     *            config for formatter
-     * @todo handle options
-     */
-    public void init(final Configuration config) {
+			Locale locale = pContext.getLocale();
 
-        this.cfg = config;
+			LOGGER.fine("Using locale prefix "
+					+ this.cfg.getString("formatter.locale.prefix"));
 
-        this.renderOptions = new HashMap<String, String>();
-        final Properties props = new Properties();
-        String key;
-        Object value;
+			UTF8ResourceBundle bundle = UTF8ResourceBundleImpl.getBundle(
+					this.cfg.getString("formatter.locale.prefix"), locale);
 
-        for (final Iterator<?> i = this.cfg.getKeys(); i.hasNext();) {
+			LOGGER.fine("Using locale "
+					+ pContext.getProperty("locale",
+							LocaleUtility.DEFAULT_LOCALE));
+			LOGGER.finer("Formatting " + items.size() + " items");
+			LOGGER.fine("Resource locale: " + bundle.getLocale());
 
-            key = (String) i.next();
+			fillContext(items, context, pContext, bundle);
+			this.engine.mergeTemplate((String) pContext.getProperty("template",
+					this.cfg.getString("formatter.template", "main.vm")),
+					this.cfg.getString("formatter.encoding", "UTF-8"), context,
+					writer);
+			writer.flush();
+		} catch (Exception e) {
+			LOGGER.log(Level.SEVERE, "Error in formatting items", e);
+			// Print full stack to logging;
+			PrintWriter writer = new PrintWriter(new StringWriter());
+			e.printStackTrace(writer);
+			LOGGER.log(Level.SEVERE, writer.toString());
+			throw new FormatException(e.getMessage());
+		}
+	}
 
-            if (key.startsWith("formatter.velocity.")) {
+	/**
+	 * For each item in the list, even when nested, we need to add variables for
+	 * required, alert, and item value. These will be made available to the
+	 * velocity context in a hash of hashes.
+	 * 
+	 * @param items
+	 *            all items to use
+	 * @param context
+	 *            velocity context
+	 * @param pContext
+	 *            processing context
+	 * @param bundle
+	 *            resource bundle
+	 * @todo we loop over errors, but only add one to the context...
+	 * @todo recursion could be a tad more efficient.
+	 */
+	private void fillContext(final Collection<Renderable> items,
+			final VelocityContext context, final RunnerContext pContext,
+			final UTF8ResourceBundle bundle) {
 
-                value = this.cfg.getProperty(key);
+		// Let's declare variables outside of loop
+		Renderable rItem = null;
+		Model model = pContext.getModel();
+		Instance inst = pContext.getInstance();
+		HashMap<String, HashMap<String, Object>> values = new HashMap<String, HashMap<String, Object>>();
+		List<Renderable> fItems = new ArrayList<Renderable>();
 
-                if (value instanceof List<?>) {
+		// Let's loop over renderable items.
+		//
+		for (Iterator<Renderable> i = items.iterator(); i.hasNext();) {
 
-                    String newVal = "";
+			rItem = i.next();
 
-                    for (final Iterator<?> j = ((List<?>) value).iterator(); j
-                            .hasNext();) {
-                        newVal = newVal + j.next() + ",";
-                    }
-                    props.setProperty(key.substring(19), newVal);
-                    LOGGER.finest("Setting Velocity property "
-                            + key.substring(19) + " to list "
-                            + this.cfg.getProperty(key).toString());
-                } else {
-                    props.setProperty(key.substring(19), this.cfg
-                            .getString(key));
-                    LOGGER.finest("Setting Velocity property "
-                            + key.substring(19) + " to "
-                            + this.cfg.getProperty(key).toString());
-                }
-            } else if (key.startsWith("formatter.options.")) {
+			addItemToContext(rItem, context, pContext, bundle, values);
 
-                this.renderOptions.put(key.substring(18), this.cfg.getString(key));
-            }
-        }
+			fItems.add(rItem);
+		}
 
-        if (TRUE.equals(config.getString("formatter.debug", FALSE))) {
-            this.debug = true;
-            LOGGER.log(Level.WARNING, "Using debug mode in formatting");
-        }
+		// Add meta data, both model and instance.
+		context.put("metadata", model.getMetaData());
+		context.put("instance_metadata", inst.getMetaData());
 
-        try {
-            this.engine = new VelocityEngine();
-            this.engine.setApplicationAttribute("engine", this.engine);
-            this.engine.setApplicationAttribute("cfg", this.cfg);
-            this.engine.init(props);
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Can't configure Velocity. This is BAD!",
-                    e);
-        }
-    }
+		// Add i18n data
+		context.put("i18n", bundle);
+		context.put("items", fItems);
+		context.put("context", values);
 
-    /**
-     * Enable reset of properties after initialization.
-     * 
-     * @param property
-     * @param value
-     */
-    public void setProperty(final String property, final String value) {
+		context.put("hasNext",
+				Boolean.valueOf(pContext.getStateManager().hasNext()));
+		context.put("hasPrevious",
+				Boolean.valueOf(pContext.getStateManager().hasPrevious()));
 
-        this.engine.setProperty(property, value);
-    }
+		try {
+			context.put("stateId", items.iterator().next().getId());
+		} catch (Exception e) {
+			// in case of no items, just ignore this.
+			context.put("stateId", "");
+		}
 
-    /**
-     * Format list of items. This formatter uses velocity and thus needs a
-     * template to work. The template to use is determined as follows: 1. if the
-     * RunnerContext contains a value for the property "template", this one is
-     * used; 2. else if the configuration given to init contains a key for
-     * "formatter.template", this one is used; 3. the template name defaults to
-     * "main.vm".
-     * 
-     * @param items
-     *            List of items to use.
-     * @param out
-     *            OutputStream to use
-     * @param pContext
-     *            Processing context
-     * @throws Exception
-     *             in case of Velocity errors, or output stream errors.
-     */
-    public void format(final Collection<Renderable> items,
-            final OutputStream out, final RunnerContext pContext)
-            throws FormatException {
+		if (this.debug) {
+			context.put("debug", TRUE);
+		} else {
+			context.put("debug", FALSE);
+		}
 
-        VelocityContext context = new VelocityContext();
-        try {
-            Writer writer;
-            writer = new OutputStreamWriter(out, this.cfg.getString(
-                    "formatter.encoding", "UTF-8"));
+		LOGGER.finest("Context: " + pContext);
 
-            Locale locale = pContext.getLocale();
-
-            LOGGER.fine("Using locale prefix "
-                    + this.cfg.getString("formatter.locale.prefix"));
-
-            UTF8ResourceBundle bundle = UTF8ResourceBundleImpl.getBundle(
-                    this.cfg.getString("formatter.locale.prefix"), locale);
-
-            LOGGER.fine("Using locale "
-                    + pContext.getProperty("locale",
-                            LocaleUtility.DEFAULT_LOCALE));
-            LOGGER.finer("Formatting " + items.size() + " items");
-            LOGGER.fine("Resource locale: " + bundle.getLocale());
-
-            fillContext(items, context, pContext, bundle);
-            this.engine.mergeTemplate((String) pContext.getProperty("template",
-                    this.cfg.getString("formatter.template", "main.vm")),
-                    this.cfg.getString("formatter.encoding", "UTF-8"), context,
-                    writer);
-            writer.flush();
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error in formatting items", e);
-            // Print full stack to logging;
-            PrintWriter writer = new PrintWriter(new StringWriter());
-            e.printStackTrace(writer);
-            LOGGER.log(Level.SEVERE, writer.toString());
-            throw new FormatException(e.getMessage());
-        }
-    }
-
-    /**
-     * For each item in the list, even when nested, we need to add variables for
-     * required, alert, and item value. These will be made available to the
-     * velocity context in a hash of hashes.
-     * 
-     * @param items
-     *            all items to use
-     * @param context
-     *            velocity context
-     * @param pContext
-     *            processing context
-     * @param bundle
-     *            resource bundle
-     * @todo we loop over errors, but only add one to the context...
-     * @todo recursion could be a tad more efficient.
-     */
-    private void fillContext(final Collection<Renderable> items,
-            final VelocityContext context, final RunnerContext pContext,
-            final UTF8ResourceBundle bundle) {
-
-        // Let's declare variables outside of loop
-        Renderable rItem = null;
-        Model model = pContext.getModel();
-        Instance inst = pContext.getInstance();
-        HashMap<String, HashMap<String, Object>> values = new HashMap<String, HashMap<String, Object>>();
-        List<Renderable> fItems = new ArrayList<Renderable>();
-
-        // Let's loop over renderable items.
-        //
-        for (Iterator<Renderable> i = items.iterator(); i.hasNext();) {
-
-            rItem = i.next();
-
-            addItemToContext(rItem, context, pContext, bundle, values);
-
-            fItems.add(rItem);
-        }
-
-        // Add meta data, both model and instance.
-        context.put("metadata", model.getMetaData());
-        context.put("instance_metadata", inst.getMetaData());
-
-        // Add i18n data
-        context.put("i18n", bundle);
-        context.put("items", fItems);
-        context.put("context", values);
-
-        context.put("hasNext", Boolean.valueOf(pContext.getStateManager()
-                .hasNext()));
-        context.put("hasPrevious", Boolean.valueOf(pContext.getStateManager()
-                .hasPrevious()));
-
-        try {
-            context.put("stateId", items.iterator().next().getId());
-        } catch (Exception e) {
-            // in case of no items, just ignore this.
-            context.put("stateId", "");
-        }
-
-        if (this.debug) {
-            context.put("debug", TRUE);
-        } else {
-            context.put("debug", FALSE);
-        }
-
-        LOGGER.finest("Context: " + pContext);
-
-        Map<String, String> localOptions = new HashMap<String, String>();
-        localOptions.putAll(this.renderOptions); 
+        RenderOptionsImpl localOptions = new RenderOptionsImpl(this.renderOptions);
         
         if (pContext.getProperty("renderOptions") != null) {
         	// Add specific render options
         	LOGGER.finest("Rendering options: "
         			+ pContext.getProperty("renderOptions"));
-
+        	
         	try {
-        		localOptions.putAll((Map<String, String>) pContext.getProperty("renderOptions"));
+            	Map<String, String> contextOptions = (Map<String, String>) pContext.getProperty("renderOptions");
+
+            	for (String key: contextOptions.keySet()) {
+        			if (Boolean.valueOf(contextOptions.get(key))) {
+        				localOptions.enable(key);
+        			} else {
+        				localOptions.disable(key);        				
+        			}
+        		}	
         	} catch (ClassCastException cce) {
         		LOGGER.severe("Couldn't cast renderoptions to map");
         	}
         }
 
     	context.put("renderOptions", localOptions);
-        
-        // Any errors?
-        if (ActionResultImpl.FAIL.equals(pContext.getResult().toString())) {
-            context.put("errors", TRUE);
-        } else {
-            context.put("errors", FALSE);
-        }
 
-        LOGGER.fine("Progress: " + pContext.getStateManager().getProgressPercentage());
-        
-        // add progress
-        context.put("percentage_done", Integer.valueOf(pContext.getStateManager().getProgressPercentage()));
+		// Any errors?
+		if (ActionResultImpl.FAIL.equals(pContext.getResult().toString())) {
+			context.put("errors", TRUE);
+		} else {
+			context.put("errors", FALSE);
+		}
 
-        LOGGER.finest("Context filled");
-    }
+		LOGGER.fine("Progress: "
+				+ pContext.getStateManager().getProgressPercentage());
 
-    /**
-     * Add single item to context, or, if it's a group, add it's controls.
-     * 
-     * @param rItem
-     * @param context
-     * @param pContext
-     * @param bundle
-     */
-    private void addItemToContext(final Renderable rItem,
-            final VelocityContext context, final RunnerContext pContext,
-            final UTF8ResourceBundle bundle,
-            final Map<String, HashMap<String, Object>> values) {
+		// add progress
+		context.put("percentage_done", Integer.valueOf(pContext
+				.getStateManager().getProgressPercentage()));
 
-        /**
-         * If it's a group, just add it's controls to the context.
-         */
-        if (rItem instanceof Group) {
+		LOGGER.finest("Context filled");
+	}
 
-            addGroupToContext((Group) rItem, pContext, values);
+	/**
+	 * Add single item to context, or, if it's a group, add it's controls.
+	 * 
+	 * @param rItem
+	 * @param context
+	 * @param pContext
+	 * @param bundle
+	 */
+	private void addItemToContext(final Renderable rItem,
+			final VelocityContext context, final RunnerContext pContext,
+			final UTF8ResourceBundle bundle,
+			final Map<String, HashMap<String, Object>> values) {
 
-            for (Iterator<Renderable> i = ((Group) rItem).getItems().iterator(); i
-                    .hasNext();) {
+		/**
+		 * If it's a group, just add it's controls to the context.
+		 */
+		if (rItem instanceof Group) {
 
-                addItemToContext(i.next(), context, pContext, bundle, values);
-            }
-            return;
-        }
+			addGroupToContext((Group) rItem, pContext, values);
 
-        if (!(rItem instanceof Control)) {
-            return;
-        }
+			for (Iterator<Renderable> i = ((Group) rItem).getItems().iterator(); i
+					.hasNext();) {
 
-        HashMap<String, Object> itemCtx = new HashMap<String, Object>();
-        Control control = (Control) rItem;
-        String bind = control.getBind();
-        Node node;
-        Model model = pContext.getModel();
-        Instance inst = pContext.getInstance();
+				addItemToContext(i.next(), context, pContext, bundle, values);
+			}
+			return;
+		}
 
-        try {
-            node = inst.getNode(bind);
-        } catch (InvalidPathExpression e1) {
-            return;
-        }
+		if (!(rItem instanceof Control)) {
+			return;
+		}
 
-        ItemProperties props = model.getItemProperties(bind);
+		HashMap<String, Object> itemCtx = new HashMap<String, Object>();
+		Control control = (Control) rItem;
+		String bind = control.getBind();
+		Node node;
+		Model model = pContext.getModel();
+		Instance inst = pContext.getInstance();
 
-        if (props == null) {
-            props = new ItemPropertiesImpl(bind);
-        }
+		try {
+			node = inst.getNode(bind);
+		} catch (InvalidPathExpression e1) {
+			return;
+		}
 
-        try {
-            LOGGER.fine("do we have calculations: " + props.getCalculate());
-            
-            LOGGER.fine("Raw node value: " + node.getValue());
+		ItemProperties props = model.getItemProperties(bind);
 
-            Object val = NodeValidator.getRawValue(node, props, model, inst);
+		if (props == null) {
+			props = new ItemPropertiesImpl(bind);
+		}
 
-            LOGGER.fine("Adding item " + control.getId()
-                    + " to context with value " + val + " and lexical value "
-                    + control.getDisplayValue(val, props.getType(), pContext.getLocale()));
+		try {
+			LOGGER.fine("do we have calculations: " + props.getCalculate());
 
-            itemCtx.put("value", val);
-            itemCtx.put("lexical_value", control.getDisplayValue(val, props.getType(), pContext
-                    .getLocale()));
+			LOGGER.fine("Raw node value: " + node.getValue());
 
-        } catch (Exception e) {
-            itemCtx.put("value", "");
-            itemCtx.put("lexical_value", "");
-        }
+			Object val = NodeValidator.getRawValue(node, props, model, inst);
 
-        String label = FillProcessor.processFills(control.getLabel(), inst,
-                model, pContext.getRenderConfig(), pContext.getLocale());
+			LOGGER.fine("Adding item "
+					+ control.getId()
+					+ " to context with value "
+					+ val
+					+ " and lexical value "
+					+ control.getDisplayValue(val, props.getType(),
+							pContext.getLocale()));
 
-        itemCtx.put("label", label);
+			itemCtx.put("value", val);
+			itemCtx.put(
+					"lexical_value",
+					control.getDisplayValue(val, props.getType(),
+							pContext.getLocale()));
 
-        String hint = FillProcessor.processFills(control.getHint(), inst,
-                model, pContext.getRenderConfig(), pContext.getLocale());
+		} catch (Exception e) {
+			itemCtx.put("value", "");
+			itemCtx.put("lexical_value", "");
+		}
 
-        itemCtx.put("hint", hint);
+		String label = FillProcessor.processFills(control.getLabel(), inst,
+				model, pContext.getRenderConfig(), pContext.getLocale());
 
-        itemCtx.put("required", Boolean.valueOf(NodeValidator.isRequired(
-                props, inst, model)).toString());
+		itemCtx.put("label", label);
 
-        itemCtx.put("relevant", Boolean.valueOf(NodeValidator.isRelevant(
-                props, inst, model)).toString());
+		String hint = FillProcessor.processFills(control.getHint(), inst,
+				model, pContext.getRenderConfig(), pContext.getLocale());
 
-        itemCtx.put("readonly", Boolean.valueOf(NodeValidator.isReadOnly(
-                props, inst, model)).toString());
+		itemCtx.put("hint", hint);
 
-        // To debug or not to debug...
-        if (this.debug) {
-            itemCtx.put("required_expr", props.getRequired().toString());
-            itemCtx.put("relevant_expr", props.getRelevant().toString());
-            itemCtx.put("constraint_expr", props.getConstraint().toString());
-            itemCtx.put("readonly_expr", props.getReadOnly().toString());
-            itemCtx.put("required_expr_resolved", XRefSolver.resolve(model, inst, props.getRequired()));
-            itemCtx.put("relevant_expr_resolved", XRefSolver.resolve(model, inst, props.getRelevant()));
-            itemCtx.put("constraint_expr_resolved", XRefSolver.resolve(model, inst, props.getConstraint()));
-            itemCtx.put("readonly_expr_resolved", XRefSolver.resolve(model, inst, props.getReadOnly()));
-        }
+		itemCtx.put("required",
+				Boolean.valueOf(NodeValidator.isRequired(props, inst, model))
+						.toString());
 
-        if ("cascadedselect".equals(control.getType())) {
-            String ref = ((CascadedSelect) rItem).getNodeRef();
-            LOGGER.finest("Using ref node " + ref);
-            
-            try {
-                String refvalue = inst.getNode(ref).getValue().toString();
-                LOGGER.finest("Ref node " + ref + " has value " + refvalue);
-                Collection<Option> options = ((CascadedSelect) rItem)
-                        .getOptions(refvalue);
-                LOGGER.finest("Added " + options.size() + " options");
-                itemCtx.put("options", options);
-            } catch (InvalidPathExpression e) {
-                LOGGER.severe("Couldn't add options: no node for reference "
-                        + ref);
-            }
-        }
+		itemCtx.put("relevant",
+				Boolean.valueOf(NodeValidator.isRelevant(props, inst, model))
+						.toString());
 
-        // Check for error conditions. Put empty alert first.
-        //
-        itemCtx.put("alert", "");
+		itemCtx.put("readonly",
+				Boolean.valueOf(NodeValidator.isReadOnly(props, inst, model))
+						.toString());
 
-        if (ActionResultImpl.FAIL.equals(pContext.getResult().toString())) {
+		// To debug or not to debug...
+		if (this.debug) {
+			itemCtx.put("required_expr", props.getRequired().toString());
+			itemCtx.put("relevant_expr", props.getRelevant().toString());
+			itemCtx.put("constraint_expr", props.getConstraint().toString());
+			itemCtx.put("readonly_expr", props.getReadOnly().toString());
+			itemCtx.put("required_expr_resolved",
+					XRefSolver.resolve(model, inst, props.getRequired()));
+			itemCtx.put("relevant_expr_resolved",
+					XRefSolver.resolve(model, inst, props.getRelevant()));
+			itemCtx.put("constraint_expr_resolved",
+					XRefSolver.resolve(model, inst, props.getConstraint()));
+			itemCtx.put("readonly_expr_resolved",
+					XRefSolver.resolve(model, inst, props.getReadOnly()));
+		}
 
-            // Is it the data?
-            Exception error = ((Failure) pContext.getResult()).getException();
+		if ("select".equals(control.getType())) {
+			String ref = ((Select) rItem).getNodeRef();
+			LOGGER.finest("Using ref node " + ref);
 
-            if (error instanceof ValidationException) {
+			Collection<Option> options = new OptionList().getOptions();
+			
+			if (ref != null) {
+				try {
+					String refvalue = inst.getNode(ref).getValue().toString();
+					LOGGER.finest("Ref node " + ref + " has value " + refvalue);
+					options = ((Select) rItem).getOptions(refvalue);
+					itemCtx.put("refvalue", refvalue);
+					LOGGER.finest("Added " + options.size() + " options");
+				} catch (InvalidPathExpression e) {
+					LOGGER.severe("Couldn't add options: no node for reference "
+							+ ref);
+				} catch (NullPointerException npe) {
+					// value may have been unset.
+					LOGGER.warning("No options added, value of ref " + ref
+							+ "node is null");
+				}
+			} else {
+				options = ((Select) rItem).getOptions();			
+			}
 
-                Map<String, Exception> errors = ((ValidationException) error)
-                        .getErrors();
+			itemCtx.put("options", options);
+		}
 
-                if (errors.containsKey(((Control) rItem).getBind())) {
+		// Check for error conditions. Put empty alert first.
+		//
+		itemCtx.put("alert", "");
 
-                    if ("".equals(((Control) rItem).getAlert())) {
-                        itemCtx.put("alert", translateError(
-                                ((ConstraintViolation) errors
-                                        .get(((Control) rItem).getBind()))
-                                        .getMessage(), bundle));
-                    } else {
-                        String alert = FillProcessor.processFills(
-                                ((Control) rItem).getAlert(), inst, model,
-                                pContext.getRenderConfig(), pContext
-                                        .getLocale());
+		if (ActionResultImpl.FAIL.equals(pContext.getResult().toString())) {
 
-                        itemCtx.put("alert", alert);
-                    }
-                }
-            }
-        }
+			// Is it the data?
+			Exception error = ((Failure) pContext.getResult()).getException();
 
-        values.put(rItem.getId(), itemCtx);
-    }
+			if (error instanceof ValidationException) {
 
-    /**
-     * Add single item to context, or, if it's a group, add it's controls.
-     * 
-     * @param rItem
-     * @param context
-     * @param pContext
-     * @param bundle
-     */
-    private void addGroupToContext(final Group group,
-            final RunnerContext pContext,
-            final Map<String, HashMap<String, Object>> values) {
+				Map<String, Exception> errors = ((ValidationException) error)
+						.getErrors();
 
-        HashMap<String, Object> itemCtx = new HashMap<String, Object>();
+				if (errors.containsKey(((Control) rItem).getBind())) {
 
-        if (isRelevant(group, pContext)) {
-            itemCtx.put("relevant", TRUE);
-        } else {
-            itemCtx.put("relevant", FALSE);
-        }
+					if ("".equals(((Control) rItem).getAlert())) {
+						itemCtx.put(
+								"alert",
+								translateError(((ConstraintViolation) errors
+										.get(((Control) rItem).getBind()))
+										.getMessage(), bundle));
+					} else {
+						String alert = FillProcessor.processFills(
+								((Control) rItem).getAlert(), inst, model,
+								pContext.getRenderConfig(),
+								pContext.getLocale());
 
-        Model model = pContext.getModel();
-        Instance inst = pContext.getInstance();
+						itemCtx.put("alert", alert);
+					}
+				}
+			}
+		}
 
-        String label = FillProcessor.processFills(group.getLabel(), inst,
-                model, pContext.getRenderConfig(), pContext.getLocale());
+		values.put(rItem.getId(), itemCtx);
+	}
 
-        itemCtx.put("label", label);
+	/**
+	 * Add single item to context, or, if it's a group, add it's controls.
+	 * 
+	 * @param rItem
+	 * @param context
+	 * @param pContext
+	 * @param bundle
+	 */
+	private void addGroupToContext(final Group group,
+			final RunnerContext pContext,
+			final Map<String, HashMap<String, Object>> values) {
 
-        String hint = FillProcessor.processFills(group.getHint(), inst, model,
-                pContext.getRenderConfig(), pContext.getLocale());
+		HashMap<String, Object> itemCtx = new HashMap<String, Object>();
 
-        itemCtx.put("hint", hint);
+		if (isRelevant(group, pContext)) {
+			itemCtx.put("relevant", TRUE);
+		} else {
+			itemCtx.put("relevant", FALSE);
+		}
 
-        values.put(group.getId(), itemCtx);
-    }
+		Model model = pContext.getModel();
+		Instance inst = pContext.getInstance();
 
-    /**
-     * Determine whether group should actually be shown or not.
-     * 
-     * @param group
-     * @param pContext
-     * @return
-     */
-    private boolean isRelevant(final Group group, final RunnerContext pContext) {
-        
-        for (Renderable r : group.getItems()) {
+		String label = FillProcessor.processFills(group.getLabel(), inst,
+				model, pContext.getRenderConfig(), pContext.getLocale());
 
-            if (r instanceof Control) {
-                Control control = (Control) r;
-                String bind = control.getBind();
-                Model model = pContext.getModel();
-                Instance inst = pContext.getInstance();
-                ItemProperties props = model.getItemProperties(bind);
+		itemCtx.put("label", label);
 
-                if (props == null) {
-                    props = new ItemPropertiesImpl(bind);
-                }
+		String hint = FillProcessor.processFills(group.getHint(), inst, model,
+				pContext.getRenderConfig(), pContext.getLocale());
 
-                if (NodeValidator.isRelevant(props, inst, model)) {
-                    return true;
-                }
-            } else if (r instanceof Group && isRelevant((Group) r, pContext)) {
-                return true;
-            }
-        }
+		itemCtx.put("hint", hint);
 
-        return false;
-    }
+		values.put(group.getId(), itemCtx);
+	}
 
-    /**
-     * Return the translated alert message.
-     * 
-     * @param msg
-     *            original message.
-     * @param bundle
-     *            locale bindle
-     * @return the translated message.
-     */
-    private String translateError(final String msg,
-            final UTF8ResourceBundle bundle) {
+	/**
+	 * Determine whether group should actually be shown or not.
+	 * 
+	 * @param group
+	 * @param pContext
+	 * @return
+	 */
+	private boolean isRelevant(final Group group, final RunnerContext pContext) {
 
-        try {
-            if (ConstraintViolation.REQUIRED.equals(msg)) {
-                return bundle.getString("alert.required");
-            } else if (ConstraintViolation.TYPE.equals(msg)) {
-                return bundle.getString("alert.type");
-            } else if (ConstraintViolation.FALSE.equals(msg)) {
-                return bundle.getString("alert.constraint");
-            } else {
-                return bundle.getString("alert.unknown");
-            }
-        } catch (Exception e) {
-            return "Erroneous input";
-        }
-    }
+		for (Renderable r : group.getItems()) {
 
-    /**
-     * Offer access to the formatter's engine.
-     * 
-     * @return the Velocity engine
-     */
-    public VelocityEngine getEngine() {
-        return this.engine;
-    }
+			if (r instanceof Control) {
+				Control control = (Control) r;
+				String bind = control.getBind();
+				Model model = pContext.getModel();
+				Instance inst = pContext.getInstance();
+				ItemProperties props = model.getItemProperties(bind);
+
+				if (props == null) {
+					props = new ItemPropertiesImpl(bind);
+				}
+
+				if (NodeValidator.isRelevant(props, inst, model)) {
+					return true;
+				}
+			} else if (r instanceof Group && isRelevant((Group) r, pContext)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Return the translated alert message.
+	 * 
+	 * @param msg
+	 *            original message.
+	 * @param bundle
+	 *            locale bindle
+	 * @return the translated message.
+	 */
+	private String translateError(final String msg,
+			final UTF8ResourceBundle bundle) {
+
+		try {
+			if (ConstraintViolation.REQUIRED.equals(msg)) {
+				return bundle.getString("alert.required");
+			} else if (ConstraintViolation.TYPE.equals(msg)) {
+				return bundle.getString("alert.type");
+			} else if (ConstraintViolation.FALSE.equals(msg)) {
+				return bundle.getString("alert.constraint");
+			} else {
+				return bundle.getString("alert.unknown");
+			}
+		} catch (Exception e) {
+			return "Erroneous input";
+		}
+	}
+
+	/**
+	 * Offer access to the formatter's engine.
+	 * 
+	 * @return the Velocity engine
+	 */
+	public VelocityEngine getEngine() {
+		return this.engine;
+	}
 }

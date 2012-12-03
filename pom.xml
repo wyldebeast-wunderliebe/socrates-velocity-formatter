@@ -1,10 +1,11 @@
-<?xmlversion="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
+
 <project xmlns="http://maven.apache.org/PO/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
  <modelVersion>4.0.0</modelVersion>
  <groupId>socrates</groupId>
  <artifactId>socrates-velocity-formatter</artifactId>
  <name>Socrates Velocity Formatter</name>
- <version>1.0.7-SNAPSHOT</version>
+ <version>1.0.9-SNAPSHOT</version>
  <description>Velocity formatter for Socrates</description>
 
  <parent>
@@ -45,14 +46,14 @@
  	<dependency>
  		<groupId>socrates</groupId>
  		<artifactId>socrates</artifactId>
- 		<version>3.2.2</version>
+ 		<version>3.2.5-SNAPSHOT</version>
  		<type>jar</type>
  		<optional>false</optional>
  	</dependency>
  	<dependency>
  		<groupId>socrates</groupId>
  		<artifactId>socrates-impl</artifactId>
- 		<version>2.3.8</version>
+ 		<version>2.3.11-SNAPSHOT</version>
  		<type>jar</type>
  		<optional>false</optional>
  	</dependency>
