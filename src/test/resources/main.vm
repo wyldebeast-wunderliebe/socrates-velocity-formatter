@@ -3,8 +3,8 @@
   #header()
   <body>
   
-    #foreach ($opt in $renderOptions.keySet())
-      <!-- $opt: $renderOptions.get($opt) -->
+    #foreach ($opt in $renderOptions.keys())
+      <!-- $opt: $renderOptions.isEnabled($opt, false) -->
     #end
   
     #formHeader()

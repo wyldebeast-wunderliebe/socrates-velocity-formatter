@@ -46,6 +46,7 @@ import com.w20e.socrates.rendering.CascadedSelect;
 import com.w20e.socrates.rendering.Control;
 import com.w20e.socrates.rendering.Group;
 import com.w20e.socrates.rendering.Option;
+import com.w20e.socrates.rendering.RenderOptionsImpl;
 import com.w20e.socrates.rendering.Renderable;
 import com.w20e.socrates.util.FillProcessor;
 import com.w20e.socrates.util.LocaleUtility;
@@ -61,16 +62,16 @@ import com.w20e.socrates.workflow.Failure;
  */
 public final class VelocityHTMLFormatter implements Formatter {
 
-    /**
-     * Render debugging info or not.
-     */
-    private boolean debug;
+	/**
+	 * Render debugging info or not.
+	 */
+	private boolean debug;
 
     /**
      * Default render options.
      */
-    private Map<String, String> renderOptions; 
-    
+    private Map<String, Object> renderOptions;
+
     /**
      * Config.
      */
@@ -101,7 +102,7 @@ public final class VelocityHTMLFormatter implements Formatter {
 
         this.cfg = config;
 
-        this.renderOptions = new HashMap<String, String>();
+        this.renderOptions = new HashMap<String, Object>();
         final Properties props = new Properties();
         String key;
         Object value;
@@ -135,7 +136,7 @@ public final class VelocityHTMLFormatter implements Formatter {
                 }
             } else if (key.startsWith("formatter.options.")) {
 
-                this.renderOptions.put(key.substring(18), this.cfg.getString(key));
+            	setRenderingProperty(key.substring(18), this.cfg.getString(key));
             }
         }
 
@@ -155,6 +156,21 @@ public final class VelocityHTMLFormatter implements Formatter {
         }
     }
 
+    
+    private void setRenderingProperty(final String pName, final String pValue) {
+
+    	if (pName.startsWith("enable_")) {
+        	this.renderOptions.put(pName, Boolean.valueOf(pValue));    		
+        	this.renderOptions.put(pName.substring(7), Boolean.valueOf(pValue));    		
+    	} else if (pName.startsWith("disable_")) {
+        	this.renderOptions.put(pName, Boolean.valueOf(pValue));
+        	this.renderOptions.put(pName.substring(8), Boolean.valueOf(pValue));    		
+    	} else {
+    		this.renderOptions.put(pName, pValue);
+    	}
+    }
+    
+    
     /**
      * Enable reset of properties after initialization.
      * 
@@ -188,6 +204,7 @@ public final class VelocityHTMLFormatter implements Formatter {
             throws FormatException {
 
         VelocityContext context = new VelocityContext();
+
         try {
             Writer writer;
             writer = new OutputStreamWriter(out, this.cfg.getString(
@@ -208,6 +225,7 @@ public final class VelocityHTMLFormatter implements Formatter {
             LOGGER.fine("Resource locale: " + bundle.getLocale());
 
             fillContext(items, context, pContext, bundle);
+            
             this.engine.mergeTemplate((String) pContext.getProperty("template",
                     this.cfg.getString("formatter.template", "main.vm")),
                     this.cfg.getString("formatter.encoding", "UTF-8"), context,
@@ -290,16 +308,23 @@ public final class VelocityHTMLFormatter implements Formatter {
 
         LOGGER.finest("Context: " + pContext);
 
-        Map<String, String> localOptions = new HashMap<String, String>();
-        localOptions.putAll(this.renderOptions); 
+        RenderOptionsImpl localOptions = new RenderOptionsImpl(this.renderOptions);
         
         if (pContext.getProperty("renderOptions") != null) {
         	// Add specific render options
         	LOGGER.finest("Rendering options: "
         			+ pContext.getProperty("renderOptions"));
-
+        	
         	try {
-        		localOptions.putAll((Map<String, String>) pContext.getProperty("renderOptions"));
+            	Map<String, String> contextOptions = (Map<String, String>) pContext.getProperty("renderOptions");
+
+            	for (String key: contextOptions.keySet()) {
+        			if (Boolean.valueOf(contextOptions.get(key))) {
+        				localOptions.enable(key);
+        			} else {
+        				localOptions.disable(key);        				
+        			}
+        		}	
         	} catch (ClassCastException cce) {
         		LOGGER.severe("Couldn't cast renderoptions to map");
         	}
