@@ -412,7 +412,12 @@ public final class VelocityHTMLFormatter implements Formatter {
 					+ control.getDisplayValue(val, props.getType(),
 							pContext.getLocale()));
 
-			itemCtx.put("value", val);
+			if (val == null) {
+				itemCtx.put("value", "");
+			} else {
+				itemCtx.put("value", val);			
+			}
+			
 			itemCtx.put(
 					"lexical_value",
 					control.getDisplayValue(val, props.getType(),
@@ -471,8 +476,8 @@ public final class VelocityHTMLFormatter implements Formatter {
 				try {
 					String refvalue = inst.getNode(ref).getValue().toString();
 					LOGGER.finest("Ref node " + ref + " has value " + refvalue);
-					options = ((Select) rItem).getOptions(refvalue);
 					itemCtx.put("refvalue", refvalue);
+					options = ((Select) rItem).getOptions(refvalue);
 					LOGGER.finest("Added " + options.size() + " options");
 				} catch (InvalidPathExpression e) {
 					LOGGER.severe("Couldn't add options: no node for reference "

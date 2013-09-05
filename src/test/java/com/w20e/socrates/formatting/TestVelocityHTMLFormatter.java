@@ -138,7 +138,7 @@ public class TestVelocityHTMLFormatter extends TestCase {
 			return false;
 		}
 
-		public void init(RenderConfig cfg, Model m, Instance i) {
+		public void init(Configuration config, RenderConfig cfg, Model m, Instance i) {
 
 		}
 
