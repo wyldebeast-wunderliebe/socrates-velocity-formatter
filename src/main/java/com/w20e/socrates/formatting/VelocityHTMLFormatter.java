@@ -45,10 +45,10 @@ import com.w20e.socrates.process.ValidationException;
 import com.w20e.socrates.rendering.Control;
 import com.w20e.socrates.rendering.Group;
 import com.w20e.socrates.rendering.Option;
-import com.w20e.socrates.rendering.Select;
 import com.w20e.socrates.rendering.OptionList;
 import com.w20e.socrates.rendering.RenderOptionsImpl;
 import com.w20e.socrates.rendering.Renderable;
+import com.w20e.socrates.rendering.Vocabulary;
 import com.w20e.socrates.util.FillProcessor;
 import com.w20e.socrates.util.LocaleUtility;
 import com.w20e.socrates.util.UTF8ResourceBundle;
@@ -466,8 +466,8 @@ public final class VelocityHTMLFormatter implements Formatter {
 					XRefSolver.resolve(model, inst, props.getReadOnly()));
 		}
 
-		if ("select".equals(control.getType())) {
-			String ref = ((Select) rItem).getNodeRef();
+		if (control instanceof Vocabulary) {
+			String ref = ((Vocabulary) rItem).getNodeRef();
 			LOGGER.finest("Using ref node " + ref);
 
 			Collection<Option> options = new OptionList().getOptions();
@@ -477,7 +477,7 @@ public final class VelocityHTMLFormatter implements Formatter {
 					String refvalue = inst.getNode(ref).getValue().toString();
 					LOGGER.finest("Ref node " + ref + " has value " + refvalue);
 					itemCtx.put("refvalue", refvalue);
-					options = ((Select) rItem).getOptions(refvalue);
+					options = ((Vocabulary) rItem).getOptions(refvalue);
 					LOGGER.finest("Added " + options.size() + " options");
 				} catch (InvalidPathExpression e) {
 					LOGGER.severe("Couldn't add options: no node for reference "
@@ -488,7 +488,7 @@ public final class VelocityHTMLFormatter implements Formatter {
 							+ "node is null");
 				}
 			} else {
-				options = ((Select) rItem).getOptions();			
+				options = ((Vocabulary) rItem).getOptions();			
 			}
 
 			itemCtx.put("options", options);
@@ -565,6 +565,34 @@ public final class VelocityHTMLFormatter implements Formatter {
 		itemCtx.put("hint", hint);
 
 		values.put(group.getId(), itemCtx);
+		
+		if (group instanceof Vocabulary) {
+			String ref = ((Vocabulary) group).getNodeRef();
+			LOGGER.finest("Using ref node " + ref);
+
+			Collection<Option> options = new OptionList().getOptions();
+			
+			if (ref != null) {
+				try {
+					String refvalue = inst.getNode(ref).getValue().toString();
+					LOGGER.finest("Ref node " + ref + " has value " + refvalue);
+					itemCtx.put("refvalue", refvalue);
+					options = ((Vocabulary) group).getOptions(refvalue);
+					LOGGER.finest("Added " + options.size() + " options");
+				} catch (InvalidPathExpression e) {
+					LOGGER.severe("Couldn't add options: no node for reference "
+							+ ref);
+				} catch (NullPointerException npe) {
+					// value may have been unset.
+					LOGGER.warning("No options added, value of ref " + ref
+							+ "node is null");
+				}
+			} else {
+				options = ((Vocabulary) group).getOptions();			
+			}
+
+			itemCtx.put("options", options);
+		}
 	}
 
 	/**

@@ -46,14 +46,14 @@
  	<dependency>
  		<groupId>socrates</groupId>
  		<artifactId>socrates</artifactId>
- 		<version>3.2.5</version>
+ 		<version>3.2.6-SNAPSHOT</version>
  		<type>jar</type>
  		<optional>false</optional>
  	</dependency>
  	<dependency>
  		<groupId>socrates</groupId>
  		<artifactId>socrates-impl</artifactId>
- 		<version>2.3.11</version>
+ 		<version>2.3.12-SNAPSHOT</version>
  		<type>jar</type>
  		<optional>false</optional>
  	</dependency>
