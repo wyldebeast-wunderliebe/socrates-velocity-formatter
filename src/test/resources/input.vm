@@ -1,8 +1,8 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
   <body>
-    <label>$item.getControl().getLabel()</label>
-    <div class="hint">$item.getControl().getHint()</label>
+    <label>$context.get($ctl.getId()).get('label')</label>
+    <div class="hint">$context.get($ctl.getId()).get('hint')</label>
     <input name="" value="" type="text"/>
   </body>
 </html>

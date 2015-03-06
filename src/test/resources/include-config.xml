@@ -22,6 +22,7 @@
     <class></class>
     <locale>
       <prefix>socratesimpl</prefix>
+      <basename>com.w20e.socrates.formatting.Messages</basename>
     </locale>
     <velocity>
       <velocimacro>

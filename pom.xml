@@ -5,15 +5,9 @@
  <groupId>socrates</groupId>
  <artifactId>socrates-velocity-formatter</artifactId>
  <name>Socrates Velocity Formatter</name>
- <version>1.0.10-SNAPSHOT</version>
+ <version>1.0.10</version>
  <description>Velocity formatter for Socrates</description>
 
- <parent>
-   <groupId>com.w20e.socrates</groupId>
-   <artifactId>socrates</artifactId>
-   <version>2.1</version>
-   <relativePath>../pom.xml</relativePath>
- </parent>
  
  <build>
    <plugins>
@@ -21,8 +15,8 @@
        <groupId>org.apache.maven.plugins</groupId>
        <artifactId>maven-compiler-plugin</artifactId> 
        <configuration>
-         <source>1.6</source>
-         <target>1.6</target>
+         <source>1.7</source>
+         <target>1.7</target>
        </configuration>
      </plugin>
    </plugins>
@@ -32,10 +26,24 @@
  	<dependency>
  		<groupId>commons-configuration</groupId>
  		<artifactId>commons-configuration</artifactId>
- 		<version>1.6</version>
+ 		<version>1.10</version>
  		<type>jar</type>
  		<optional>false</optional>
  	</dependency>
+ 	<dependency>
+ 		<groupId>commons-collections</groupId>
+ 		<artifactId>commons-collections</artifactId>
+ 		<version>3.2.1</version>
+ 		<type>jar</type>
+ 		<optional>false</optional>
+ 	</dependency>
+ 	<dependency>
+ 		<groupId>com.googlecode.gettext-commons</groupId>
+ 		<artifactId>gettext-commons</artifactId>
+ 		<version>0.9.8</version>
+ 		<type>jar</type>
+ 		<optional>false</optional>
+ 	</dependency> 	
  	<dependency>
  		<groupId>org.apache.velocity</groupId>
  		<artifactId>velocity</artifactId>
@@ -46,14 +54,7 @@
  	<dependency>
  		<groupId>socrates</groupId>
  		<artifactId>socrates</artifactId>
- 		<version>3.2.6-SNAPSHOT</version>
- 		<type>jar</type>
- 		<optional>false</optional>
- 	</dependency>
- 	<dependency>
- 		<groupId>socrates</groupId>
- 		<artifactId>socrates-impl</artifactId>
- 		<version>2.3.12-SNAPSHOT</version>
+ 		<version>4.0.0</version>
  		<type>jar</type>
  		<optional>false</optional>
  	</dependency>

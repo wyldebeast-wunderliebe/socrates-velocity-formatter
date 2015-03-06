@@ -13,13 +13,30 @@
       <div class="hint">$ctl.getHint()</div>
       #renderTextArea($ctl)
     #elseif ($ctl.getType() == "input")
-      <div class="question">$ctl.getLabel()</div>
-      <div class="alert">$ctl.getAlert()</div>
-      <div class="hint">$ctl.getHint()</div>
+      <label>$context.get($ctl.getId()).get('label')</label>
+      <div class="hint">$context.get($ctl.getId()).get('hint')</label>
+      <div class="alert">$context.get($ctl.getId()).get('alert')</div>
       #renderInput($ctl)
+    #elseif ($ctl.getType() == "checkbox")
+      <label>$context.get($ctl.getId()).get('label')</label>
+      <div class="hint">$context.get($ctl.getId()).get('hint')</label>
+      <div class="alert">$context.get($ctl.getId()).get('alert')</div>
+      #renderCheckbox($ctl)
     #end
 
 #end
+
+#macro(renderCheckbox $item)
+    <input type="checkbox" name="$item.getId()" 
+      value="true"
+      class="control"
+      id="ctl-$item.getId()"
+      #if ($context.get($item.getId()).get('value') != '')
+        checked="checked"
+      #end
+    />
+#end
+
 
 #macro(renderInput $item)
     <input type="text" name="$item.getId()"

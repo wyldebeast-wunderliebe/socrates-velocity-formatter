@@ -30,6 +30,8 @@ import java.util.logging.Logger;
 import org.apache.commons.configuration.Configuration;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
+import org.xnap.commons.i18n.I18n;
+import org.xnap.commons.i18n.I18nFactory;
 
 import com.w20e.socrates.data.Instance;
 import com.w20e.socrates.data.Node;
@@ -45,9 +47,9 @@ import com.w20e.socrates.process.ValidationException;
 import com.w20e.socrates.rendering.Control;
 import com.w20e.socrates.rendering.Group;
 import com.w20e.socrates.rendering.Option;
-import com.w20e.socrates.rendering.OptionList;
 import com.w20e.socrates.rendering.RenderOptionsImpl;
 import com.w20e.socrates.rendering.Renderable;
+import com.w20e.socrates.rendering.Translatable;
 import com.w20e.socrates.rendering.Vocabulary;
 import com.w20e.socrates.util.FillProcessor;
 import com.w20e.socrates.util.LocaleUtility;
@@ -209,20 +211,20 @@ public final class VelocityHTMLFormatter implements Formatter {
 					"formatter.encoding", "UTF-8"));
 
 			Locale locale = pContext.getLocale();
-
+			
 			LOGGER.fine("Using locale prefix "
 					+ this.cfg.getString("formatter.locale.prefix"));
 
 			UTF8ResourceBundle bundle = UTF8ResourceBundleImpl.getBundle(
 					this.cfg.getString("formatter.locale.prefix"), locale);
 
-			LOGGER.fine("Using locale "
-					+ pContext.getProperty("locale",
-							LocaleUtility.DEFAULT_LOCALE));
+			LOGGER.fine("Using locale " + locale);
+			LOGGER.fine("Found resource locale: " + bundle.getLocale());
+
 			LOGGER.finer("Formatting " + items.size() + " items");
-			LOGGER.fine("Resource locale: " + bundle.getLocale());
 
 			fillContext(items, context, pContext, bundle);
+
 			this.engine.mergeTemplate((String) pContext.getProperty("template",
 					this.cfg.getString("formatter.template", "main.vm")),
 					this.cfg.getString("formatter.encoding", "UTF-8"), context,
@@ -282,6 +284,7 @@ public final class VelocityHTMLFormatter implements Formatter {
 
 		// Add i18n data
 		context.put("i18n", bundle);
+		context.put("locale", pContext.getLocale());
 		context.put("items", fItems);
 		context.put("context", values);
 
@@ -404,12 +407,14 @@ public final class VelocityHTMLFormatter implements Formatter {
 
 			Object val = NodeValidator.getRawValue(node, props, model, inst);
 
+			System.out.println(val);
+			
 			LOGGER.fine("Adding item "
 					+ control.getId()
 					+ " to context with value "
 					+ val
 					+ " and lexical value "
-					+ control.getDisplayValue(val, props.getType(),
+					+ control.getDisplayValue(val, props.getDatatype(),
 							pContext.getLocale()));
 
 			if (val == null) {
@@ -420,20 +425,24 @@ public final class VelocityHTMLFormatter implements Formatter {
 			
 			itemCtx.put(
 					"lexical_value",
-					control.getDisplayValue(val, props.getType(),
+					control.getDisplayValue(val, props.getDatatype(),
 							pContext.getLocale()));
 
 		} catch (Exception e) {
 			itemCtx.put("value", "");
 			itemCtx.put("lexical_value", "");
 		}
+		
+		String label = this.translate(control.getLabel(), pContext.getLocale());
 
-		String label = FillProcessor.processFills(control.getLabel(), inst,
-				model, pContext.getRenderConfig(), pContext.getLocale());
+		label = FillProcessor.processFills(label, inst, model,
+				pContext.getRenderConfig(), pContext.getLocale());
 
 		itemCtx.put("label", label);
 
-		String hint = FillProcessor.processFills(control.getHint(), inst,
+		String hint = this.translate(control.getHint(), pContext.getLocale());
+
+		hint = FillProcessor.processFills(hint, inst,
 				model, pContext.getRenderConfig(), pContext.getLocale());
 
 		itemCtx.put("hint", hint);
@@ -457,40 +466,23 @@ public final class VelocityHTMLFormatter implements Formatter {
 			itemCtx.put("constraint_expr", props.getConstraint().toString());
 			itemCtx.put("readonly_expr", props.getReadOnly().toString());
 			itemCtx.put("required_expr_resolved",
-					XRefSolver.resolve(model, inst, props.getRequired()));
+					XRefSolver.resolve(model, inst, props.getRequired(), node));
 			itemCtx.put("relevant_expr_resolved",
-					XRefSolver.resolve(model, inst, props.getRelevant()));
+					XRefSolver.resolve(model, inst, props.getRelevant(), node));
 			itemCtx.put("constraint_expr_resolved",
-					XRefSolver.resolve(model, inst, props.getConstraint()));
+					XRefSolver.resolve(model, inst, props.getConstraint(), node));
 			itemCtx.put("readonly_expr_resolved",
-					XRefSolver.resolve(model, inst, props.getReadOnly()));
+					XRefSolver.resolve(model, inst, props.getReadOnly(), node));
 		}
 
 		if (control instanceof Vocabulary) {
-			String ref = ((Vocabulary) rItem).getNodeRef();
-			LOGGER.finest("Using ref node " + ref);
 
-			Collection<Option> options = new OptionList().getOptions();
+			ArrayList<Option> options = new ArrayList<Option>();
 			
-			if (ref != null) {
-				try {
-					String refvalue = inst.getNode(ref).getValue().toString();
-					LOGGER.finest("Ref node " + ref + " has value " + refvalue);
-					itemCtx.put("refvalue", refvalue);
-					options = ((Vocabulary) rItem).getOptions(refvalue);
-					LOGGER.finest("Added " + options.size() + " options");
-				} catch (InvalidPathExpression e) {
-					LOGGER.severe("Couldn't add options: no node for reference "
-							+ ref);
-				} catch (NullPointerException npe) {
-					// value may have been unset.
-					LOGGER.warning("No options added, value of ref " + ref
-							+ "node is null");
-				}
-			} else {
-				options = ((Vocabulary) rItem).getOptions();			
+			for (Option opt:((Vocabulary) rItem).getOptions()) {
+				options.add(new Option(opt.getValue(), this.translate(opt.getLabel(), pContext.getLocale())));
 			}
-
+			
 			itemCtx.put("options", options);
 		}
 
@@ -517,8 +509,10 @@ public final class VelocityHTMLFormatter implements Formatter {
 										.get(((Control) rItem).getBind()))
 										.getMessage(), bundle));
 					} else {
-						String alert = FillProcessor.processFills(
-								((Control) rItem).getAlert(), inst, model,
+						String alert = this.translate(((Control) rItem).getAlert(), pContext.getLocale());
+
+						alert = FillProcessor.processFills(
+								alert, inst, model,
 								pContext.getRenderConfig(),
 								pContext.getLocale());
 
@@ -554,12 +548,16 @@ public final class VelocityHTMLFormatter implements Formatter {
 		Model model = pContext.getModel();
 		Instance inst = pContext.getInstance();
 
-		String label = FillProcessor.processFills(group.getLabel(), inst,
-				model, pContext.getRenderConfig(), pContext.getLocale());
+		String label = this.translate(group.getLabel(), pContext.getLocale());
+		
+		label = FillProcessor.processFills(label, inst, model,
+				pContext.getRenderConfig(), pContext.getLocale());
 
 		itemCtx.put("label", label);
+		
+		String hint = this.translate(group.getHint(), pContext.getLocale());
 
-		String hint = FillProcessor.processFills(group.getHint(), inst, model,
+		hint = FillProcessor.processFills(hint, inst, model,
 				pContext.getRenderConfig(), pContext.getLocale());
 
 		itemCtx.put("hint", hint);
@@ -567,32 +565,30 @@ public final class VelocityHTMLFormatter implements Formatter {
 		values.put(group.getId(), itemCtx);
 		
 		if (group instanceof Vocabulary) {
-			String ref = ((Vocabulary) group).getNodeRef();
-			LOGGER.finest("Using ref node " + ref);
 
-			Collection<Option> options = new OptionList().getOptions();
-			
-			if (ref != null) {
-				try {
-					String refvalue = inst.getNode(ref).getValue().toString();
-					LOGGER.finest("Ref node " + ref + " has value " + refvalue);
-					itemCtx.put("refvalue", refvalue);
-					options = ((Vocabulary) group).getOptions(refvalue);
-					LOGGER.finest("Added " + options.size() + " options");
-				} catch (InvalidPathExpression e) {
-					LOGGER.severe("Couldn't add options: no node for reference "
-							+ ref);
-				} catch (NullPointerException npe) {
-					// value may have been unset.
-					LOGGER.warning("No options added, value of ref " + ref
-							+ "node is null");
-				}
-			} else {
-				options = ((Vocabulary) group).getOptions();			
-			}
-
-			itemCtx.put("options", options);
+			itemCtx.put("options", ((Vocabulary) group).getOptions());
 		}
+	}
+	
+	/**
+	 * Translate given translatable, nut only if message id is not empty.
+	 */
+	private String translate(Translatable str, Locale locale) {
+		
+		if ("".equals(str.getMsgid())) {
+			return "";
+		}
+		
+		String baseName = this.cfg.getString("formatter.locale.basename", "Messages");
+
+		I18n i18n = I18nFactory.getI18n(this.getClass(), baseName, locale);
+
+		if (!"".equals(str.getMsgctx()) && str.getMsgctx() != null) {
+			return i18n.trc(str.getMsgid(), str.getMsgctx());
+		} else {			
+			return i18n.tr(str.getMsgid());
+		}
+
 	}
 
 	/**
