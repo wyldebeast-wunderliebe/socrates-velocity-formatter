@@ -22,6 +22,8 @@
       <div class="hint">$context.get($ctl.getId()).get('hint')</label>
       <div class="alert">$context.get($ctl.getId()).get('alert')</div>
       #renderCheckbox($ctl)
+    #elseif ($ctl.getType() == "text")
+      #renderText($ctl)      
     #end
 
 #end
@@ -43,6 +45,15 @@
       value="$context.get($item.getId()).get('value')"
     />
 #end
+
+
+#macro(renderText $txt)
+  yoo
+  <div id="text-$txt.getId()" class="text">
+    $context.get($txt.getId()).get('text')
+  </div>
+#end
+
 
 #macro(renderTextArea $item)
   <textarea name="$item.getId()" rows="3" cols="40">$context.get($item).get('value')</textarea>

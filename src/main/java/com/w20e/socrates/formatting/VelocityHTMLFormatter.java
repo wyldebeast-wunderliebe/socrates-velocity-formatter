@@ -41,6 +41,7 @@ import com.w20e.socrates.model.ItemProperties;
 import com.w20e.socrates.model.ItemPropertiesImpl;
 import com.w20e.socrates.model.Model;
 import com.w20e.socrates.model.NodeValidator;
+import com.w20e.socrates.model.NodeValidatorWrapper;
 import com.w20e.socrates.model.XRefSolver;
 import com.w20e.socrates.process.RunnerContext;
 import com.w20e.socrates.process.ValidationException;
@@ -49,10 +50,10 @@ import com.w20e.socrates.rendering.Group;
 import com.w20e.socrates.rendering.Option;
 import com.w20e.socrates.rendering.RenderOptionsImpl;
 import com.w20e.socrates.rendering.Renderable;
+import com.w20e.socrates.rendering.TextBlock;
 import com.w20e.socrates.rendering.Translatable;
 import com.w20e.socrates.rendering.Vocabulary;
 import com.w20e.socrates.util.FillProcessor;
-import com.w20e.socrates.util.LocaleUtility;
 import com.w20e.socrates.util.UTF8ResourceBundle;
 import com.w20e.socrates.util.UTF8ResourceBundleImpl;
 import com.w20e.socrates.workflow.ActionResultImpl;
@@ -212,13 +213,12 @@ public final class VelocityHTMLFormatter implements Formatter {
 
 			Locale locale = pContext.getLocale();
 			
-			LOGGER.fine("Using locale prefix "
+			LOGGER.fine("Using locale " + locale + " with prefix "
 					+ this.cfg.getString("formatter.locale.prefix"));
 
 			UTF8ResourceBundle bundle = UTF8ResourceBundleImpl.getBundle(
 					this.cfg.getString("formatter.locale.prefix"), locale);
 
-			LOGGER.fine("Using locale " + locale);
 			LOGGER.fine("Found resource locale: " + bundle.getLocale());
 
 			LOGGER.finer("Formatting " + items.size() + " items");
@@ -281,6 +281,7 @@ public final class VelocityHTMLFormatter implements Formatter {
 		// Add meta data, both model and instance.
 		context.put("metadata", model.getMetaData());
 		context.put("instance_metadata", inst.getMetaData());
+		context.put("instance_values", new NodeValidatorWrapper(model, inst));
 
 		// Add i18n data
 		context.put("i18n", bundle);
@@ -377,16 +378,37 @@ public final class VelocityHTMLFormatter implements Formatter {
 			return;
 		}
 
+		HashMap<String, Object> itemCtx = new HashMap<String, Object>();
+		Model model = pContext.getModel();
+		Instance inst = pContext.getInstance();
+
+		if (rItem instanceof TextBlock) {
+			
+			LOGGER.fine("Adding text block to context: " + rItem.getId());
+			
+			String text = this.translate(((TextBlock) rItem).getText(), pContext.getLocale());
+
+			LOGGER.finest("Found translation: " + text);
+
+			text = FillProcessor.processFills(text, inst, model,
+					pContext.getRenderConfig(), pContext.getLocale());
+			
+			LOGGER.finest("Fills processed: " + text);
+
+			itemCtx.put("text", text);
+
+			values.put(rItem.getId(), itemCtx);
+						
+			return;
+		}
+		
 		if (!(rItem instanceof Control)) {
 			return;
 		}
 
-		HashMap<String, Object> itemCtx = new HashMap<String, Object>();
 		Control control = (Control) rItem;
 		String bind = control.getBind();
 		Node node;
-		Model model = pContext.getModel();
-		Instance inst = pContext.getInstance();
 
 		try {
 			node = inst.getNode(bind);
@@ -405,9 +427,7 @@ public final class VelocityHTMLFormatter implements Formatter {
 
 			LOGGER.fine("Raw node value: " + node.getValue());
 
-			Object val = NodeValidator.getRawValue(node, props, model, inst);
-
-			System.out.println(val);
+			Object val = NodeValidator.getValue(node, props, model, inst);
 			
 			LOGGER.fine("Adding item "
 					+ control.getId()

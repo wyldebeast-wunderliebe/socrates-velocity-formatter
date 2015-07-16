@@ -34,6 +34,7 @@ import com.w20e.socrates.rendering.RenderConfig;
 import com.w20e.socrates.rendering.RenderState;
 import com.w20e.socrates.rendering.Renderable;
 import com.w20e.socrates.rendering.StateManager;
+import com.w20e.socrates.rendering.TextBlock;
 import com.w20e.socrates.rendering.TranslatableImpl;
 
 
@@ -73,6 +74,7 @@ public class TestVelocityHTMLFormatter extends TestCase {
 			inst.addNode(new NodeImpl("A01", "SOME VALUE"));
 			inst.addNode(new NodeImpl("A02", "SOME VALUE"));
 			inst.addNode(new NodeImpl("A03"));
+			inst.addNode(new NodeImpl("locale"));
 
 			ControlImpl item = new Input("c0");
 			item.setBind("A01");
@@ -88,9 +90,13 @@ public class TestVelocityHTMLFormatter extends TestCase {
 			item3.setBind("A03");
 			item3.setLabel("Check me!");
 
+			TextBlock text = new TextBlock("c2");
+			text.setText("Foo! <a href='http://la.la/la/${locale}/'>lala</a>");
+			
 			testItems.add(item);
 			testItems.add(item2);
 			testItems.add(item3);
+			testItems.add(text);
 
 			RunnerContextImpl ctx = new RunnerContextImpl(out, this.formatter,
 					sm, model, inst, null);
@@ -102,9 +108,11 @@ public class TestVelocityHTMLFormatter extends TestCase {
 			assertTrue(out.toString().indexOf("enable_js: true") > -1);
 			assertTrue(out.toString().indexOf("disable_ajax_validation: true") > -1);
 
-			// System.out.println(out.toString());
+			System.out.println(out.toString());
 			assertTrue(out.toString().indexOf("Yo dude") != -1);
 
+			assertTrue(out.toString().indexOf("Foo!") != -1);
+			
 			out.reset();
 			
 			Map<String, String> opts = new HashMap<String, String>();
@@ -117,10 +125,10 @@ public class TestVelocityHTMLFormatter extends TestCase {
 
 			assertTrue(out.toString().indexOf("enable_js: true") > -1);
 			assertTrue(out.toString().indexOf("disable_ajax_validation: false") > -1);
-
-			System.out.println(out.toString());
 			
 			assertTrue(out.toString().indexOf("He du!") != -1);
+
+			//assertTrue(out.toString().indexOf("Fuu!") != -1);
 
 		} catch (Exception e) {
 
@@ -173,5 +181,5 @@ public class TestVelocityHTMLFormatter extends TestCase {
         public int getProgressPercentage() {
             return 0;
         }
-	}
+	}	
 }
