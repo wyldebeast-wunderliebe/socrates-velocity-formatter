@@ -636,6 +636,8 @@ public final class VelocityHTMLFormatter implements Formatter {
 				if (NodeValidator.isRelevant(props, inst, model)) {
 					return true;
 				}
+			} else if (r instanceof TextBlock) {
+				return true;
 			} else if (r instanceof Group && isRelevant((Group) r, pContext)) {
 				return true;
 			}

@@ -5,7 +5,7 @@
  <groupId>socrates</groupId>
  <artifactId>socrates-velocity-formatter</artifactId>
  <name>Socrates Velocity Formatter</name>
- <version>1.0.10</version>
+ <version>1.0.11</version>
  <description>Velocity formatter for Socrates</description>
 
  
